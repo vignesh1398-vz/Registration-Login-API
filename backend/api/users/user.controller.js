@@ -17,14 +17,14 @@ exports.addUser = async (request, response, next) => {
         let userRecord = new users(insertObject);
         await userRecord.save();
         logger.info('User added');
-        response.status(200).json({
+        return response.status(200).json({
             description: 'User added',
             _id: userRecord._id
         });
     }
     catch(error){
         logger.error(error.message);
-        response.status(400).json({message: error.message });
+        return response.status(400).json({message: error.message });
     }
 }
 
@@ -62,14 +62,14 @@ exports.modifyUser = async (request, response, next) => {
         await userRecord.save();
 
         logger.info('User modified');
-        response.status(200).json({
+        return response.status(200).json({
             description: "User modified",
             _id: userRecord._id
         });
     }
     catch(error){
         logger.error(error.message);
-        response.status(400).json({ message: error.message, violations: error.violations });
+        return response.status(400).json({ message: error.message, violations: error.violations });
     }
 }
 
@@ -79,16 +79,43 @@ exports.login = async (request, response, next) => {
         let {email, password} = request.body;
         if(!email || !password) 
             throw new Error("Email and Password are required");
-        let userRecord = await users.findOne({email: email}).lean();
+        let userRecord = await users.findOne({email: email});
         if(!userRecord)
             throw new Error("User not found");
         if(! await verifyPassword(password, userRecord.password))
             throw new Error('Invalid password');
+        
+        if(userRecord.activeLogins >= 3)
+            throw new Error("Not more than 3 logged in sessions are allowed. Logout of your previous sessions.");
+        
+        userRecord.activeLogins++;
+        await userRecord.save();
         logger.info('Logged in successfully');
-        response.status(200).json({ description: "Logged in successfully"});
+        return response.status(200).json({ description: "Logged in successfully"});
     }
     catch(error){
         logger.error(error.message);
-        response.status(400).json({ message: error.message });
+        return response.status(400).json({ message: error.message });
+    }
+}
+
+/* User logout */
+exports.logout = async(request, response, next) => {
+    try{
+        let userId = request.params.userId;
+        let userRecord = await users.findById(userId);
+        if(!userRecord)
+            throw new Error("User not found, something went wrong!");
+        if(userRecord.activeLogins <= 0) 
+            throw new Error('Not logged in yet');
+        userRecord.activeLogins--;
+        await userRecord.save();
+        return response.status(400).json({
+            description: "User logged out"
+        });
+    }
+    catch(error){
+        logger.error(error.message);
+        return response.status(400).json({ message: error.message });
     }
 }

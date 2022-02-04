@@ -52,6 +52,10 @@ var userSchema = new Schema({
     password: {
         type: String
     },
+    activeLogins: {
+        type: Number,
+        default: 0
+    },
     created_date: {
         type: Date,
         required: true
