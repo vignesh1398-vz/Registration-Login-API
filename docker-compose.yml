@@ -13,7 +13,7 @@ services:
             - ./backend:/app
         environment: 
             - MONGODB_URI=mongodb://mongo:27017/lendbox
-            - SERVER_PORT=3000
+            - PORT=3000
 
     mongo: 
         image: mongo:4.4.4-bionic
