@@ -1,4 +1,4 @@
-const { validatePassword, hashPassword } = require('../../helper/password.helper');
+const { validatePassword, hashPassword, verifyPassword } = require('../../helper/password.helper');
 const _ = require('lodash');
 const { logger } = require('../../logger/logger');
 const users = require('./user.model');
@@ -58,6 +58,7 @@ exports.modifyUser = async (request, response, next) => {
         userRecord.password = password ? await hashPassword(password) : userRecord.password;
         userRecord.fatherName = fatherName ? fatherName : userRecord.fatherName;
         userRecord.pan = pan ? pan : userRecord.pan;
+        userRecord.modified_date = new Date().toISOString()
         await userRecord.save();
 
         logger.info('User modified');
@@ -69,5 +70,25 @@ exports.modifyUser = async (request, response, next) => {
     catch(error){
         logger.error(error.message);
         response.status(400).json({ message: error.message, violations: error.violations });
+    }
+}
+
+/* User login */
+exports.login = async (request, response, next) => {
+    try{
+        let {email, password} = request.body;
+        if(!email || !password) 
+            throw new Error("Email and Password are required");
+        let userRecord = await users.findOne({email: email}).lean();
+        if(!userRecord)
+            throw new Error("User not found");
+        if(! await verifyPassword(password, userRecord.password))
+            throw new Error('Invalid password');
+        logger.info('Logged in successfully');
+        response.status(200).json({ description: "Logged in successfully"});
+    }
+    catch(error){
+        logger.error(error.message);
+        response.status(400).json({ message: error.message });
     }
 }
